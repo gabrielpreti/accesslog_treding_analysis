@@ -40,6 +40,14 @@ if(is.na(finalTime)){
 
 log("Input parameters: accesslogFile=", accesslogFile, " initialTime=", initialTime, " finalTime=", finalTime)
 
+
+#############################################
+#Para execução pelo RStudio
+############################################
+# accesslogFile = "tests/access_pagseguro.uol.com.br_443.log.201409120200"
+# initialTime = strptime(x="10/09/2014 17:30:00", format="%d/%m/%Y %H:%M:%S")
+# finalTime = strptime(x="10/09/2014 21:00:00", format="%d/%m/%Y %H:%M:%S")
+
 inicio = Sys.time();
 
 #############################################
