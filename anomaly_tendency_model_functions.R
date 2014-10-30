@@ -50,7 +50,7 @@ analiseMetricRegister <- function(metricData, registerIndex) {
 }
 
 analiseMetric = function(metricValue, data){
-  metricData  = subset(data, url_return_code==metricValue);
+  metricData  = subset(data, url_return_code==metricValue);#FIXME: corrigir isso aqui, a métrica está fixa
   metricData$alarming = FALSE;
   
   alarms = data.frame();
