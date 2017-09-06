@@ -41,8 +41,10 @@ logger("Input parameters: accesslogFile=", accesslogFile, " initialTime=", initi
 ############################################
 baseAccesslogFile = "tests/access_pagseguro.uol.com.br_443.log.201409040200"
 actualAccesslogFile = "tests/access_pagseguro.uol.com.br_443.log.201409120200"
-initialTime = strptime(x="10/09/2014 20:30:00", format="%d/%m/%Y %H:%M:%S")
-finalTime = strptime(x="10/09/2014 21:00:00", format="%d/%m/%Y %H:%M:%S")
+initialTimeActual = strptime(x="10/09/2014 17:0:00", format="%d/%m/%Y %H:%M:%S")
+finalTimeActual = strptime(x="10/09/2014 21:00:00", format="%d/%m/%Y %H:%M:%S")
+initialTimeBase = strptime(x="27/10/2014 17:00:00", format="%d/%m/%Y %H:%M:%S")
+finalTimeBase = strptime(x="27/10/2014 21:00:00", format="%d/%m/%Y %H:%M:%S")
 
 inicio = Sys.time();
 
@@ -74,8 +76,8 @@ names(baseData) = c("ip", "port", "method", "url", "domain", "return_code", "ref
 names(actualData) = c("ip", "port", "method", "url", "domain", "return_code", "referrer", "user_agent", "response_time", "date")
 
 #Filtra um período de tempo
-baseData = baseData[baseData$date>=initialTime & baseData$date<=finalTime, ];
-actualData = actualData[actualData$date>=initialTime & actualData$date<=finalTime, ];
+baseData = baseData[baseData$date>=initialTimeBase & baseData$date<=finalTimeBase, ];
+actualData = actualData[actualData$date>=initialTimeActual & actualData$date<=finalTimeActual, ];
 
 
 #identifica o dominio do referrer
@@ -111,11 +113,11 @@ for(m in generatedMetricNames){
   baseMetricValues[[m]] = unique(baseData[!is.na(baseData[, m]), m])
   actualMetricValues[[m]] = unique(actualData[!is.na(actualData[, m]), m])
   
-  baseGeneratedMetrics[[paste(m, "responseTime", sep="_")]] = measureByPeriod(.data=baseData[!is.na(baseData[, m]), ], .field=m, .periodField="date", .intervalInSeconds=60, .function=meanResponseTime)
-  baseGeneratedMetrics[[paste(m, "hitsQty", sep="_")]] = measureByPeriod(.data=baseData[!is.na(baseData[, m]), ], .field=m, .periodField="date", .intervalInSeconds=60, .function=nrow)
+  baseGeneratedMetrics[[paste(m, "responseTime", sep="_")]] = measureByPeriod(.data=baseData[!is.na(baseData[, m]), ], .field=m, .periodField="date", .intervalInSeconds=300, .function=meanResponseTime)
+  baseGeneratedMetrics[[paste(m, "hitsQty", sep="_")]] = measureByPeriod(.data=baseData[!is.na(baseData[, m]), ], .field=m, .periodField="date", .intervalInSeconds=300, .function=nrow)
   
-  actualGeneratedMetrics[[paste(m, "responseTime", sep="_")]] = measureByPeriod(.data=actualData[!is.na(actualData[, m]), ], .field=m, .periodField="date", .intervalInSeconds=60, .function=meanResponseTime)
-  actualGeneratedMetrics[[paste(m, "hitsQty", sep="_")]] = measureByPeriod(.data=actualData[!is.na(actualData[, m]), ], .field=m, .periodField="date", .intervalInSeconds=60, .function=nrow)
+  actualGeneratedMetrics[[paste(m, "responseTime", sep="_")]] = measureByPeriod(.data=actualData[!is.na(actualData[, m]), ], .field=m, .periodField="date", .intervalInSeconds=300, .function=meanResponseTime)
+  actualGeneratedMetrics[[paste(m, "hitsQty", sep="_")]] = measureByPeriod(.data=actualData[!is.na(actualData[, m]), ], .field=m, .periodField="date", .intervalInSeconds=300, .function=nrow)
   
   logger("finished with metric", m)
 }
@@ -125,12 +127,14 @@ logger("Metrics generated.")
 #############################################
 #Analisa as métricas geradas
 ############################################
+diferencas = data.frame(interval=c(), value=c())
 for(metricName in generatedMetricNames){
   
   #primeiro analisa as métricas comuns, ou seja, que aparecem em ambos os conjuntos de dados
   uniqueValues=intersect(baseMetricValues[[metricName]], actualMetricValues[[metricName]])
   
-  ldply(.data=uniqueValues, .parallel=FALSE, .fun=analiseDifference, metricName, baseGeneratedMetrics[[paste(metricName, "responseTime", sep="_")]], actualGeneratedMetrics[[paste(metricName, "responseTime", sep="_")]])
+  uniqueValues=c("pagseguro.uol.com.br/transaction/search.jhtml 200") #temporario
+  diferencas = ldply(.data=uniqueValues, .parallel=FALSE, .fun=analiseDifference, metricName, baseGeneratedMetrics[[paste(metricName, "responseTime", sep="_")]], actualGeneratedMetrics[[paste(metricName, "responseTime", sep="_")]])
   
   #Próximos passos
     # - Baixar o accesslog de 0209
@@ -138,11 +142,25 @@ for(metricName in generatedMetricNames){
     # - Plotar gráficos com as diferenças 
 }
 
+
 analiseDifference = function(metricValue, metricName, baseData, actualData){
   baseMetrics  =   baseData[which(baseData[, metricName]==metricValue), ];
   actualMetrics  = actualData[which(actualData[, metricName]==metricValue), ];
   
   for(i in 1:nrow(actualMetrics))  { 
-    print(actualMetrics[i, "V1"] - baseMetrics[i, "V1"])
+    diferencas[i, "interval"] = actualMetrics[i, "interval"]
+    diferencas[i, "value"] = (actualMetrics[i, "V1"] - baseMetrics[i, "V1"])
   }
+  return(diferencas)
+}
+
+plot(y=log(diferencas$value), x=diferencas$interval)
+labels=seq(1, nrow(diferencas), by=nrow(alarmValues)/30);
+
+plot(rep(1, nrow(diferencas)), type="n", xlim=c(0, nrow(diferencas)), ylim=c(min(diferencas$value), max(diferencas$value)), xaxt="n", xlab="", ylab="");
+labels=seq(1, nrow(diferencas), by=nrow(diferencas)/30);
+axis(1, at=labels, lab=strftime(diferencas$interval[labels], format="%d/%m %H:%M"), las=2);
+for(i in 2:nrow(diferencas)){
+  print( log(diferencas[i, "value"]))
+  lines(x=c(i-1, i), y=c(diferencas[i-1, "value"], diferencas[i, "value"]) )
 }

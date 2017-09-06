@@ -44,9 +44,9 @@ log("Input parameters: accesslogFile=", accesslogFile, " initialTime=", initialT
 #############################################
 #Para execução pelo RStudio
 ############################################
-# accesslogFile = "tests/access_pagseguro.uol.com.br_443.log.201409120200"
-# initialTime = strptime(x="10/09/2014 17:30:00", format="%d/%m/%Y %H:%M:%S")
-# finalTime = strptime(x="10/09/2014 21:00:00", format="%d/%m/%Y %H:%M:%S")
+accesslogFile = "tests/access_pagseguro.uol.com.br_443.log.201409120200"
+initialTime = strptime(x="10/09/2014 17:30:00", format="%d/%m/%Y %H:%M:%S")
+finalTime = strptime(x="10/09/2014 21:00:00", format="%d/%m/%Y %H:%M:%S")
 
 inicio = Sys.time();
 
@@ -105,7 +105,7 @@ uniqueValues = list();
 for(m in generatedMetricNames){
   log("Generating metric", m)
   uniqueValues[[m]] = unique(data[!is.na(data[, m]), m])
-  generatedMetrics[[paste(m, "responseTime", sep="_")]] = measureByPeriod(.data=data[!is.na(data[, m]), ], .field=m, .periodField="date", .intervalInSeconds=60, .function=meanResponseTime)
+#   generatedMetrics[[paste(m, "responseTime", sep="_")]] = measureByPeriod(.data=data[!is.na(data[, m]), ], .field=m, .periodField="date", .intervalInSeconds=300, .function=meanResponseTime)
   generatedMetrics[[paste(m, "hitsQty", sep="_")]] = measureByPeriod(.data=data[!is.na(data[, m]), ], .field=m, .periodField="date", .intervalInSeconds=60, .function=nrow)
   log("finished with metric", m)
 }
@@ -126,11 +126,11 @@ options(echo=echoCommands);
 for(metricName in generatedMetricNames){
   log("Analising", metricName, "...");
   
-  log("Generating alarms for response time")
-  alarms = ldply(.data=uniqueValues[[metricName]], .parallel=TRUE, .fun=analiseMetric, generatedMetrics[[paste(metricName, "responseTime", sep="_")]])
-  log("Generating report for response time")
-  generateReport(metricName, alarms, fileName=paste("/tmp/report_", metricName, "_responseTime.pdf", sep=""))
-  rm(alarms)#pra economizar memória
+#   log("Generating alarms for response time")
+#   alarms = ldply(.data=uniqueValues[[metricName]], .parallel=TRUE, .fun=analiseMetric, generatedMetrics[[paste(metricName, "responseTime", sep="_")]])
+#   log("Generating report for response time")
+#   generateReport(metricName, alarms, fileName=paste("/tmp/report_", metricName, "_responseTime.pdf", sep=""))
+#   rm(alarms)#pra economizar memória
   
   log("Generating alarms for hits quantity")
   alarms = ldply(.data=uniqueValues[[metricName]], .parallel=TRUE, .fun=analiseMetric, generatedMetrics[[paste(metricName, "hitsQty", sep="_")]])
